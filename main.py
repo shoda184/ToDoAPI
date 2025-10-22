@@ -1,12 +1,30 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlmodel import select
 from typing import List
-
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 from database import engine, init_db, get_session
 from models import Todo
 from sqlmodel import Session
 
-app = FastAPI(title="Simple Todo with FastAPI + SQLModel")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 起動時
+    init_db()
+    yield
+    # 終了時（必要ならクリーンアップを書く）
+    # engine.dispose() など
+    
+app = FastAPI(title="Simple Todo with FastAPI + SQLModel", lifespan=lifespan)
+
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.on_event("startup")
 def on_startup():
